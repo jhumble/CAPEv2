@@ -481,8 +481,18 @@ async def get_statistics(days: int = 7, token: str = "") -> str:
 
 @mcp_tool("taskreport")
 async def get_task_report(task_id: int, format: str = "json", token: str = "") -> str:
-    """Get the analysis report for a task (json, lite, maec, metadata, lean)."""
-    allowed_formats = {"json", "lite", "maec", "metadata", "lean"}
+    """Get the analysis report for a task.
+
+    lean       -- summarised, LLM-sized. Start here.
+    litereport -- CAPE's own reduced JSON report (reports/lite.json). Needs
+                  `litereport` enabled in reporting.conf, else the file does not exist.
+    json       -- the complete report. Frequently megabytes; expect a client to refuse
+                  or truncate it, and prefer downloading it if you need the whole thing.
+    lite       -- NOT a report. It is a ZIP of the analysis directory (CAPE/, files/,
+                  procdump/, shots/, dump.pcap ...), so decoding it as JSON fails with
+                  an unhelpful empty error. Named confusingly; `litereport` is the JSON.
+    """
+    allowed_formats = {"json", "lite", "litereport", "maec", "metadata", "lean"}
     if format not in allowed_formats:
         return json.dumps({"error": True, "message": f"Invalid format provided. Allowed formats: {', '.join(allowed_formats)}"}, indent=2)
 
