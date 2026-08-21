@@ -121,6 +121,37 @@ class PolarProxyThread(Thread):
                     {"active": True, "match": {"type": "domain_regex", "expression": domain_regex}, "action": {"type": "bypass"}}
                 )
 
+        # LOCAL PATCH: let no-SNI sessions through instead of killing them.
+        #
+        # PolarProxy in transparent mode derives the upstream target from SNI.
+        # A ClientHello with no SNI -- which is what you get from malware that
+        # connects to a hardcoded IP -- leaves it with nowhere to forward, so it
+        # logs NoSniException and CLOSES the connection. CAPE passes
+        # `--nosni nosni.example.org` for exactly this case, but PolarProxy warns
+        # "command line argument --ruleset overrides --nosni" and CAPE always
+        # generates a ruleset, so that flag never takes effect.
+        #
+        # The consequence is worse than not intercepting: the C2 connection is
+        # actively broken, so the sample cannot beacon at all and the analysis is
+        # a false negative. Measured on task 118 -- eight consecutive
+        # "Closing connection without SNI" / "Failed to establish internal TLS
+        # session" against a PureHVNC C2 on :4449.
+        #
+        # A null expression matches sessions with no SNI (netresec TlsFirewall
+        # docs). Bypassing them restores pass-through: the flow is NOT decrypted
+        # -- it cannot be, there is no IP match type and no target to connect to
+        # -- but it reaches the C2, so behaviour is preserved and the handshake,
+        # certificate and JA3/JA3S are still in dump.pcap.
+        ruleset_json["rules"].append(
+            {
+                "active": True,
+                "match": {"type": "domain", "expression": None},
+                "action": {"type": "bypass"},
+                "description": "No SNI: cannot determine an upstream target, so pass through "
+                               "undecrypted rather than closing the session.",
+            }
+        )
+
         with open(self.ruleset, "w") as fh:
             json.dump(ruleset_json, fh, indent=2)
 
