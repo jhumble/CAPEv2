@@ -472,9 +472,22 @@ def polarproxy_enable(interface, client, tls_port, proxy_port):
         "--to",
         proxy_port
     )
+    # LOCAL PATCH: insert at position 1, do not append.
+    #
+    # This lab puts its guest-isolation chain first in INPUT:
+    #     -A INPUT -i eth1 -j CAPE_ANALYSIS_IN
+    # and CAPE_ANALYSIS_IN ends in -j DROP.  An APPENDED accept therefore sits
+    # after that jump and is never reached, so the redirected SYN to the proxy
+    # port is dropped.  The symptom is silent and misleading: PolarProxy starts,
+    # binds, and logs normally, the REDIRECT rule matches packets, and tls.pcap
+    # is written -- but stays 24 bytes (header only), which reads as "the sample
+    # made no TLS connections" rather than as a firewall drop.
+    #
+    # Re-apply after any CAPE update; see cape-sandbox/LAB.md.
     run_iptables(
-        "-A",
+        "-I",
         "INPUT",
+        "1",
         "-i",
         interface,
         "-p",
