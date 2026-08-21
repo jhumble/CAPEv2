@@ -60,8 +60,63 @@ class PolarProxyThread(Thread):
         self.bypass_domains = polarproxy.cfg.get("bypass_list")
         self.block_domains = polarproxy.cfg.get("block_list")
         self.ruleset = os.path.join(self.storage_dir, "ruleset.json")
-        self.tlsport = 443
-        self.listen_port = self._get_unused_port()
+
+        # LOCAL PATCH: intercept a LIST of ports, not one.
+        #
+        # Upstream hardcodes a single port (443, overridable per task with
+        # tlsport=N). Malware C2 is routinely on a non-standard TLS port --
+        # AsyncRAT/VenomRAT/Quasar/Pure-family builders default to 4449, 6606,
+        # 7707, 8808 and friends. Those flows were passed through untouched and
+        # never reached the decrypted capture, and the failure is SILENT: the
+        # task reports normally, options still say polarproxy=1, and tls.pcap
+        # exists and is non-empty (full of Windows background noise), so every
+        # surface-level check says interception worked. An analyst reading only
+        # tls.pcap concludes "no C2 activity" -- the exact wrong conclusion.
+        # Measured on task 113: 825 packets to the C2 on :4449 in dump.pcap, 0
+        # in tls.pcap.
+        #
+        # Intercepting ALL ports is NOT an option here: PolarProxy's
+        # `--nontls allow` only works when the target host is explicit
+        # (--httpconnect/--socks/--haproxy). In transparent -p mode the target
+        # comes from SNI, so non-TLS sessions hit the default action, `block`,
+        # and redirecting everything would kill plain HTTP, SMB and friends.
+        # Hence an explicit list, tunable in conf/polarproxy.conf without
+        # re-patching this file.
+        self.tlsports = self._configured_ports()
+        # One listener per intercepted port; PolarProxy accepts repeated -p.
+        self.listen_ports = {}
+        for port in self.tlsports:
+            lp = self._get_unused_port()
+            if lp:
+                self.listen_ports[port] = lp
+        # Kept for compatibility with the rest of the module.
+        self.tlsport = self.tlsports[0] if self.tlsports else 443
+        self.listen_port = self.listen_ports.get(self.tlsport)
+
+    # Default stays 443, matching upstream. Widening it costs a listener and a
+    # REDIRECT rule per port on every analysis, for ports most samples never
+    # touch. The workflow is instead: run, see C2 on some port in dump.pcap,
+    # resubmit with options=tlsport=443,<port>.
+    DEFAULT_TLS_PORTS = (443,)
+
+    def _configured_ports(self):
+        """Ports to intercept: conf/polarproxy.conf `tlsports`, else the default set."""
+        raw = polarproxy.cfg.get("tlsports")
+        if not raw:
+            return list(self.DEFAULT_TLS_PORTS)
+        ports = []
+        for chunk in str(raw).split(","):
+            chunk = chunk.strip()
+            if not chunk:
+                continue
+            try:
+                n = int(chunk)
+            except ValueError:
+                log.warning("polarproxy.conf: ignoring non-numeric tlsports entry %r", chunk)
+                continue
+            if 1 <= n <= 65535 and n not in ports:
+                ports.append(n)
+        return ports or list(self.DEFAULT_TLS_PORTS)
 
     def _get_unused_port(self) -> int | None:
         """Return the first unused TCP port from the set."""
@@ -165,19 +220,44 @@ class PolarProxyThread(Thread):
                 log.exception("PolarProxy failed to find an available bind port. Bailing...")
                 return
 
-            # See if user specified a different TLS port to intercept on.
+            # Per-task override. Now accepts a comma-separated list; a single
+            # value still behaves exactly as before.
             if "tlsport" in self.task.options:
-                match = re.search(r"tlsport=(\d+)", self.task.options)
+                match = re.search(r"tlsport=([\d,]+)", self.task.options)
                 if not match:
-                    log.warning("Failed to parse 'tlsport' out of options (%s). Defaulting to %d.", self.task.options, self.tlsport)
+                    log.warning("Failed to parse 'tlsport' out of options (%s). Keeping %s.", self.task.options, self.tlsports)
                 else:
-                    self.tlsport = int(match.groups()[0])
+                    wanted = []
+                    for chunk in match.group(1).split(","):
+                        chunk = chunk.strip()
+                        if chunk.isdigit() and 1 <= int(chunk) <= 65535 and int(chunk) not in wanted:
+                            wanted.append(int(chunk))
+                    if wanted:
+                        self.tlsports = wanted
+                        self.listen_ports = {}
+                        for port in self.tlsports:
+                            lp = self._get_unused_port()
+                            if lp:
+                                self.listen_ports[port] = lp
+                        self.tlsport = self.tlsports[0]
+                        self.listen_port = self.listen_ports.get(self.tlsport)
 
-            try:
-                rooter("polarproxy_enable", self.host_iface, self.machine.ip, str(self.tlsport), str(self.listen_port))
-            except subprocess.CalledProcessError as e:
-                log.exception("Failed to execute firewall rules: %s. Bailing...", e)
+            if not self.listen_ports:
+                log.error("PolarProxy: no listener ports available. Bailing...")
                 return
+
+            # One REDIRECT per intercepted port.
+            self.enabled_ports = []
+            for port, lp in sorted(self.listen_ports.items()):
+                try:
+                    rooter("polarproxy_enable", self.host_iface, self.machine.ip, str(port), str(lp))
+                    self.enabled_ports.append((port, lp))
+                except subprocess.CalledProcessError as e:
+                    log.exception("Failed to add firewall rule for port %s: %s", port, e)
+            if not self.enabled_ports:
+                log.error("PolarProxy: no firewall rules installed. Bailing...")
+                return
+            log.info("PolarProxy intercepting TCP %s", ",".join(str(p) for p, _ in self.enabled_ports))
 
             log.info("Starting PolarProxy process")
 
@@ -216,9 +296,11 @@ class PolarProxyThread(Thread):
                 # LISTEN-PORT           TCP port to bind proxy to.
                 # DECRYPTED-PORT        TCP server port to use for decrypted traffic in PCAP.
                 # EXTERNAL-PORT         TCP port for proxy to connect to. Default value is same as LISTEN-PORT.
-                "-p",
-                f"{self.host_ip},{self.listen_port},80,{self.tlsport}",
             ]
+            # One -p per intercepted port. Netresec documents -p as repeatable
+            # and it is verified working on this build (2.0.1.0).
+            for port, lp in sorted(self.listen_ports.items()):
+                polarproxy_args += ["-p", f"{self.host_ip},{lp},80,{port}"]
 
             # Open up log file handle
             self.log_file = open(os.path.join(self.storage_dir, "polarproxy.log"), "w")
@@ -270,4 +352,8 @@ class PolarProxyThread(Thread):
         finally:
             self.proc = None
             log.info("Cleaning up PolarProxy iptables rules")
-            rooter("polarproxy_disable", self.host_iface, self.machine.ip, str(self.tlsport), str(self.listen_port))
+            for port, lp in getattr(self, "enabled_ports", []) or [(self.tlsport, self.listen_port)]:
+                try:
+                    rooter("polarproxy_disable", self.host_iface, self.machine.ip, str(port), str(lp))
+                except Exception:
+                    log.exception("Failed to remove firewall rule for port %s", port)
