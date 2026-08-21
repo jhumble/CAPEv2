@@ -234,8 +234,35 @@ from lib.cuckoo.core.data.task import (
 )
 from lib.cuckoo.core.rooter import _load_socks5_operational, vpns
 
-# from mcp.filters import lean_search_filters
+# LOCAL PATCH -- restore the lean search projection (upstream a9a0887da "temp fix").
+#
+# Upstream writes this as `from mcp.filters import lean_search_filters`, which cannot
+# work here: CAPE's `mcp` extra installs the MCP SDK, whose top-level package is also
+# named `mcp`, and site-packages beats CUCKOO_ROOT on sys.path -- so the import raises
+# ModuleNotFoundError and takes the whole web app down at startup. Verified on this
+# host: `import mcp` resolves to .../site-packages/mcp/__init__.py. That collision is
+# why upstream stubbed the name to {} four hours after PR #2926 merged it.
+#
+# The stub is not harmless. {} is falsy, so `projection or perform_search_filters` in
+# perform_search() silently falls back to a projection carrying NEITHER `signatures`
+# NOR `CAPE` -- which is why every lean/MCP result reported zero signatures and no
+# payload configs on runs that actually had dozens of both.
+#
+# Load the file by path instead. That sidesteps the package-name collision entirely and
+# keeps mcp/filters.py as the single tunable source of truth it is documented to be.
 lean_search_filters = {}
+try:
+    import importlib.util as _lean_ilu
+
+    _lean_spec = _lean_ilu.spec_from_file_location(
+        "cape_mcp_filters", os.path.join(CUCKOO_ROOT, "mcp", "filters.py")
+    )
+    if _lean_spec and _lean_spec.loader:
+        _lean_mod = _lean_ilu.module_from_spec(_lean_spec)
+        _lean_spec.loader.exec_module(_lean_mod)
+        lean_search_filters = getattr(_lean_mod, "lean_search_filters", {}) or {}
+except Exception as _lean_exc:  # a config file must never break the web app
+    print("Could not load mcp/filters.py lean projection: %r" % (_lean_exc,))
 try:
     import psutil
 
