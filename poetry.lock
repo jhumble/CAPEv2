@@ -4202,6 +4202,18 @@ files = [
 ]
 
 [[package]]
+name = "proxmoxer"
+version = "2.3.0"
+description = "Python Wrapper for the Proxmox 2.x API (HTTP and SSH)"
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "proxmoxer-2.3.0-py3-none-any.whl", hash = "sha256:1c03445e95cf9c53b6e50614dbaf561e0e1eb3ec878cf45ddde4bc4421c56743"},
+    {file = "proxmoxer-2.3.0.tar.gz", hash = "sha256:0b0b2067187af1fc6d4257a46ac68c8fd79cc25d2813637cdae7a9a98fbfd11f"},
+]
+
+[[package]]
 name = "psutil"
 version = "6.1.1"
 description = "Cross-platform lib for process and system monitoring in Python."
@@ -7084,4 +7096,4 @@ yara = ["plyara"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10, <4.0"
-content-hash = "f697094f5bba08bc55f1b59d1336611e976aca37039c610efc5df05431b9793e"
+content-hash = "f55dc1492c7656114e9509faab91eba9fbe35356bb88ef5e9ca4902e3be2b2a4"
