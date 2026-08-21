@@ -1861,13 +1861,21 @@ def tasks_iocs(request, task_id, detail=None):
         del data["info"]["machine"]["manager"]
         del data["info"]["machine"]["label"]
         del data["info"]["machine"]["id"]
+    # Commented out in 2020 (commit 0a513721d3, "test solution") together with the
+    # `certs` block just above; `certs` was restored 14 months later and this was not.
+    # The endpoint has therefore reported an empty signature list for every task since,
+    # with no error and no log line -- a run that disabled AV, downloaded a RAT and
+    # established SYSTEM-level C2 returns `signatures: []` and reads as a clean sandbox.
+    #
+    # Restored defensively, because the original would raise on any report lacking the
+    # key and mutated the caller's document via `del`.
     data["signatures"] = []
-    """
-    # Grab sigs
-    for sig in buf["signatures"]:
-        del sig["alert"]
+    for sig in buf.get("signatures", []) or []:
+        if not isinstance(sig, dict):
+            continue
+        sig = dict(sig)
+        sig.pop("alert", None)
         data["signatures"].append(sig)
-    """
     # Grab target file info
     if "target" in list(buf.keys()):
         data["target"] = buf["target"]
