@@ -347,7 +347,15 @@ async def submit_static(
 def get_lean_cape_report(raw_cape_json):
     """Filters a 50MB CAPE report down to a 500-token LLM payload."""
     return {
-        "score": raw_cape_json.get("info", {}).get("score", 0),
+        # LOCAL PATCH: upstream reads info.score, which CAPE does not populate -- the
+        # field is `malscore` at the top level. Every lean report therefore claimed
+        # score 0, including runs that scored 10.0. Keep info.score as a fallback in
+        # case a future CAPE fills it in.
+        "score": raw_cape_json.get("malscore", raw_cape_json.get("info", {}).get("score", 0)),
+        # LOCAL PATCH: upstream emits no task id at all, so a multi-result search tells
+        # you what matched but not WHICH task matched -- the results are unusable for
+        # any follow-up call.
+        "task_id": raw_cape_json.get("info", {}).get("id"),
         "family": raw_cape_json.get("malfamily") or raw_cape_json.get("detections", {}).get("family") or "Unknown",
         "extracted_configs": raw_cape_json.get("CAPE", []),
         "high_severity_signatures": [
