@@ -344,6 +344,28 @@ async def submit_static(
 
 # --- Task Management & Search ---
 
+def _detected_family(raw_cape_json):
+    """Family name from a report, whatever shape `detections` happens to be.
+
+    LOCAL PATCH: this was `raw_cape_json.get("detections", {}).get("family")`.
+    CAPE emits `detections` as a dict on some tasks and a LIST on others, so a
+    search whose results included even one list-shaped task died with
+    "'list' object has no attribute 'get'" and returned nothing at all -- one bad
+    task made the whole result set unreadable. Every other field in the lean
+    report is already isinstance-guarded; this one was missed.
+    """
+    if raw_cape_json.get("malfamily"):
+        return raw_cape_json["malfamily"]
+    det = raw_cape_json.get("detections")
+    if isinstance(det, dict):
+        return det.get("family") or "Unknown"
+    if isinstance(det, list):
+        for entry in det:
+            if isinstance(entry, dict) and entry.get("family"):
+                return entry["family"]
+    return "Unknown"
+
+
 def get_lean_cape_report(raw_cape_json):
     """Filters a 50MB CAPE report down to a 500-token LLM payload."""
     return {
@@ -356,7 +378,7 @@ def get_lean_cape_report(raw_cape_json):
         # you what matched but not WHICH task matched -- the results are unusable for
         # any follow-up call.
         "task_id": raw_cape_json.get("info", {}).get("id"),
-        "family": raw_cape_json.get("malfamily") or raw_cape_json.get("detections", {}).get("family") or "Unknown",
+        "family": _detected_family(raw_cape_json),
         "extracted_configs": raw_cape_json.get("CAPE", []),
         "high_severity_signatures": [
             {"name": sig["name"], "desc": sig["description"]}
@@ -372,6 +394,36 @@ def get_lean_cape_report(raw_cape_json):
             "commands": raw_cape_json.get("behavior", {}).get("summary", {}).get("executed_commands", []) if isinstance(raw_cape_json.get("behavior", {}).get("summary"), dict) else []
         }
     }
+
+# LOCAL PATCH: a full-report search is unbounded. `lean=False` returns the entire
+# CAPE report for EVERY match, so a broad query -- searching one analyst's tasks by
+# custom=, say -- serialises hundreds of megabytes into a single JSON-RPC line. That
+# does not merely truncate: it killed the MCP connection outright, taking the whole
+# session's sandbox access with it and giving the caller no idea why. Refuse instead,
+# and hand back the task ids so the caller can fetch the ones they actually want.
+MAX_FULL_RESULTS = 5
+
+
+def _guard_full_results(result, hint):
+    matches = result.get("data") if isinstance(result, dict) else result
+    if not isinstance(matches, list) or len(matches) <= MAX_FULL_RESULTS:
+        return result
+    ids = []
+    for item in matches:
+        if isinstance(item, dict):
+            ids.append((item.get("info") or {}).get("id"))
+    return {
+        "error": True,
+        "message": (
+            "%d matches with lean=False. Returning full reports for that many would "
+            "exceed the response limit and drop the connection, so nothing was sent. "
+            "Re-run with lean=True for the summary, or fetch a single task by id. (%s)"
+            % (len(matches), hint)
+        ),
+        "matches": len(matches),
+        "task_ids": [i for i in ids if i is not None],
+    }
+
 
 def _apply_lean_report(result):
     if isinstance(result, dict):
@@ -401,6 +453,8 @@ async def search_task(hash_value: str, lean: bool = True, token: str = "") -> st
     result = await _request("GET", f"tasks/search/{algo}/{hash_value}/", token=token)
     if lean:
         result = _apply_lean_report(result)
+    else:
+        result = _guard_full_results(result, "%s=%s" % (algo, hash_value))
     return json.dumps(result, indent=2)
 
 @mcp_tool("extendedtasksearch")
@@ -415,6 +469,8 @@ async def extended_search(option: str, argument: str, lean: bool = True, token: 
     result = await _request("POST", "tasks/extendedsearch/", token=token, data=data)
     if lean:
         result = _apply_lean_report(result)
+    else:
+        result = _guard_full_results(result, "option=%s" % option)
     return json.dumps(result, indent=2)
 
 @mcp_tool("extendedtasksearch")
