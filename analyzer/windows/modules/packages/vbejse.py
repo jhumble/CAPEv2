@@ -11,6 +11,7 @@ class VBSJSE(Package):
     """VBS/JSE analysis package."""
 
     PATHS = [
+        ("SystemRoot", "sysnative", "wscript.exe"),
         ("SystemRoot", "system32", "wscript.exe"),
     ]
     summary = "Opens a sample file with wscript.exe."

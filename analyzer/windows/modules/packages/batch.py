@@ -10,6 +10,7 @@ class Batch(Package):
     """batch analysis package."""
 
     PATHS = [
+        ("SystemRoot", "sysnative", "cmd.exe"),
         ("SystemRoot", "system32", "cmd.exe"),
     ]
     summary = "Executes the batch scripts with cmd.exe."

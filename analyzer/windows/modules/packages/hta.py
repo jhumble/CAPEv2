@@ -10,6 +10,7 @@ class HTA(Package):
     """HTA file analysis package."""
 
     PATHS = [
+        ("SystemRoot", "sysnative", "mshta.exe"),
         ("SystemRoot", "system32", "mshta.exe"),
     ]
     summary = "Executes the sample with mshta.exe."

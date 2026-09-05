@@ -71,6 +71,7 @@ class ServiceDll(Package):
         self.options = options
 
     PATHS = [
+        ("SystemRoot", "sysnative", "sc.exe"),
         ("SystemRoot", "system32", "sc.exe"),
     ]
     summary = "Launches the given sample as a service."

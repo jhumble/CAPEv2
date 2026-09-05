@@ -12,6 +12,7 @@ class JS(Package):
     """JavaScript analysis package."""
 
     PATHS = [
+        ("SystemRoot", "sysnative", "wscript.exe"),
         ("SystemRoot", "system32", "wscript.exe"),
     ]
     summary = "Executes a .JS file using wscript.exe."

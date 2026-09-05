@@ -16,6 +16,7 @@ class INF(Package):
         self.options = options
 
     PATHS = [
+        ("SystemRoot", "sysnative", "cmstp.exe"),
         ("SystemRoot", "System32", "cmstp.exe"),
         ("SystemRoot", "SysWOW64", "cmstp.exe"),
     ]

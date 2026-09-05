@@ -11,6 +11,7 @@ class Regsvr(Package):
     """DLL analysis package."""
 
     PATHS = [
+        ("SystemRoot", "sysnative", "regsvr32.exe"),
         ("SystemRoot", "system32", "regsvr32.exe"),
     ]
     summary = "Opens the file with regsvr32.exe."

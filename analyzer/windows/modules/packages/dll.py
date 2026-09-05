@@ -23,6 +23,7 @@ class Dll(Package):
     """DLL analysis package."""
 
     PATHS = [
+        ("SystemRoot", "sysnative", "rundll32.exe"),
         ("SystemRoot", "System32", "rundll32.exe"),
     ]
     summary = "Executes a .DLL file using rundll32.exe."

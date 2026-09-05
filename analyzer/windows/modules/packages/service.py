@@ -59,6 +59,7 @@ class Service(Package):
     """Service analysis package."""
 
     PATHS = [
+        ("SystemRoot", "sysnative", "sc.exe"),
         ("SystemRoot", "system32", "sc.exe"),
     ]
     summary = "Launches the given sample as a service."

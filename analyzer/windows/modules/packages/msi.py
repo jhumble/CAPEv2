@@ -9,6 +9,7 @@ class Msi(Package):
     """MSI analysis package."""
 
     PATHS = [
+        ("SystemRoot", "sysnative", "msiexec.exe"),
         ("SystemRoot", "system32", "msiexec.exe"),
     ]
     summary = "Executes a sample with msiexec.exe."

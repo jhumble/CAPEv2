@@ -6,6 +6,7 @@ class RDP(Package):
     """RDP analysis package."""
 
     PATHS = [
+        ("SystemRoot", "sysnative", "mstsc.exe"),
         ("SystemRoot", "system32", "mstsc.exe"),
     ]
 

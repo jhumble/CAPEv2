@@ -29,11 +29,15 @@ class ZipCompound(Package):
     """Extended functionality from the zip package to process compound samples"""
 
     PATHS = [
+        ("SystemRoot", "sysnative", "cmd.exe"),
         ("SystemRoot", "system32", "cmd.exe"),
+        ("SystemRoot", "sysnative", "wscript.exe"),
         ("SystemRoot", "system32", "wscript.exe"),
+        ("SystemRoot", "sysnative", "rundll32.exe"),
         ("SystemRoot", "system32", "rundll32.exe"),
         ("SystemRoot", "sysnative", "WindowsPowerShell", "v1.0", "powershell.exe"),
         ("ProgramFiles", "7-Zip", "7z.exe"),
+        ("SystemRoot", "sysnative", "xpsrchvw.exe"),
         ("SystemRoot", "system32", "xpsrchvw.exe"),
         ("ProgramFiles", "Microsoft Office", "WINWORD.EXE"),
         ("ProgramFiles", "Microsoft Office", "Office*", "WINWORD.EXE"),

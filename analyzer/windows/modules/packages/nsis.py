@@ -12,6 +12,7 @@ class NSIS(Package):
     """
 
     PATHS = [
+        ("SystemRoot", "sysnative", "cmd.exe"),
         ("SystemRoot", "system32", "cmd.exe"),
     ]
     summary = "Executes the sample file with cmd.exe /NCRC"

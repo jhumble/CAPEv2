@@ -11,6 +11,7 @@ class WSF(Package):
     """Windows Scripting File analysis package."""
 
     PATHS = [
+        ("SystemRoot", "sysnative", "wscript.exe"),
         ("SystemRoot", "system32", "wscript.exe"),
     ]
     summary = "Executes a .wsf file using wscript.exe."

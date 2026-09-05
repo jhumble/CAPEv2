@@ -9,6 +9,7 @@ class Xps(Package):
     """XPS analysis package."""
 
     PATHS = [
+        ("SystemRoot", "sysnative", "xpsrchvw.exe"),
         ("SystemRoot", "system32", "xpsrchvw.exe"),
     ]
     summary = "Opens the sample file with xpsrchvw.exe."

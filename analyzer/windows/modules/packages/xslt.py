@@ -10,6 +10,7 @@ class XSLT(Package):
     """XSLT file analysis package."""
 
     PATHS = [
+        ("SystemRoot", "sysnative", "wbem", "wmic.exe"),
         ("SystemRoot", "system32", "wbem", "wmic.exe"),
         ("SystemRoot", "SysWOW64", "wbem", "wmic.exe"),
     ]

@@ -14,6 +14,7 @@ class VBS(Package):
     """VBS analysis package."""
 
     PATHS = [
+        ("SystemRoot", "sysnative", "wscript.exe"),
         ("SystemRoot", "system32", "wscript.exe"),
     ]
     summary = "Executes a .vbs (or .vbe) file using wscript.exe."

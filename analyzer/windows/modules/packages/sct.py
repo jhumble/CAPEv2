@@ -8,6 +8,7 @@ class SCT(Package):
     """SCT analysis package."""
 
     PATHS = [
+        ("SystemRoot", "sysnative", "regsvr32.exe"),
         ("SystemRoot", "system32", "regsvr32.exe"),
     ]
     summary = "Opens the sample with regsvr32.exe scrobj.dll"

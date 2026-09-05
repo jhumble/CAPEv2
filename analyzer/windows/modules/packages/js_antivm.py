@@ -12,6 +12,7 @@ class JS_ANTIVM(Package):
     """JavaScript analysis package, with anti-VM technique prevention.."""
 
     PATHS = [
+        ("SystemRoot", "sysnative", "wscript.exe"),
         ("SystemRoot", "system32", "wscript.exe"),
     ]
     summary = "Executes a .JS file using wscript.exe."

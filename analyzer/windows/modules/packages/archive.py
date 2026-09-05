@@ -37,12 +37,18 @@ class Archive(Package):
     """Archive analysis package."""
 
     PATHS = [
+        ("SystemRoot", "sysnative", "msiexec.exe"),
         ("SystemRoot", "system32", "msiexec.exe"),
+        ("SystemRoot", "sysnative", "cmd.exe"),
         ("SystemRoot", "system32", "cmd.exe"),
+        ("SystemRoot", "sysnative", "wscript.exe"),
         ("SystemRoot", "system32", "wscript.exe"),
+        ("SystemRoot", "sysnative", "rundll32.exe"),
         ("SystemRoot", "system32", "rundll32.exe"),
+        ("SystemRoot", "sysnative", "regsvr32.exe"),
         ("SystemRoot", "system32", "regsvr32.exe"),
         ("SystemRoot", "sysnative", "WindowsPowerShell", "v1.0", "powershell.exe"),
+        ("SystemRoot", "sysnative", "xpsrchvw.exe"),
         ("SystemRoot", "system32", "xpsrchvw.exe"),
         ("ProgramFiles", "7-Zip", "7z.exe"),
         ("ProgramFiles", "WinRAR", "WinRAR.exe"),

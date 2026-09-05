@@ -9,6 +9,7 @@ class Reg(Package):
     """Reg analysis package."""
 
     PATHS = [
+        ("SystemRoot", "sysnative", "reg.exe"),
         ("SystemRoot", "System32", "reg.exe"),
     ]
     summary = "Opens a registry file with reg.exe."

@@ -9,6 +9,7 @@ class CPL(Package):
     """Control Panel Applet analysis package."""
 
     PATHS = [
+        ("SystemRoot", "sysnative", "control.exe"),
         ("SystemRoot", "system32", "control.exe"),
     ]
     summary = "Opens the sample using the control panel."

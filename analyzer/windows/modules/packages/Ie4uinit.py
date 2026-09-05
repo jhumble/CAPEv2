@@ -14,6 +14,7 @@ class IE4uinit(Package):
     """Ie4uinit analysis package."""
 
     PATHS = [
+        ("SystemRoot", "sysnative", "ie4uinit.exe"),
         ("SystemRoot", "system32", "ie4uinit.exe"),
         # ("Windows", "SysWOW64", "ie4uinit.exe"),
     ]
