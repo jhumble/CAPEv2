@@ -2898,7 +2898,6 @@ def tasks_procmemory(request, task_id, pid="all"):
         resp = {"error": True, "error_value": "No memory dumps saved"}
         return Response(resp)
 
-    parent_folder = os.path.dirname(srcdir)
     analysis_dir = os.path.join(CUCKOO_ROOT, "storage", "analyses", f"{task_id}")
     if pid == "all":
         if USE_SEVENZIP:
@@ -2922,7 +2921,9 @@ def tasks_procmemory(request, task_id, pid="all"):
         resp["Content-Disposition"] = f"attachment; filename={task_id}_procdumps.zip"
         return resp
     else:
-        filepath = os.path.join(parent_folder, pid + ".dmp")
+        # Per-process dumps live in memory/<pid>.dmp, i.e. inside srcdir. This used to
+        # join against dirname(srcdir), which strips that component, so it never hit.
+        filepath = os.path.join(srcdir, pid + ".dmp")
         if path_exists(filepath):
             if USE_SEVENZIP:
                 zip_path = os.path.join(analysis_dir, f"{task_id}-{pid}_dmp.zip")
