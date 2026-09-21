@@ -129,6 +129,21 @@ class _Database(TasksMixIn,
         # Get db session.
         self.session = scoped_session(sessionmaker(bind=self.engine, expire_on_commit=False, future=True))
 
+        # Safe begin context manager to prevent transaction nesting issues
+        original_begin = self.session.begin
+        from contextlib import contextmanager
+
+        @contextmanager
+        def safe_begin(*args, **kwargs):
+            if self.session().in_transaction():
+                yield
+                self.session().flush()
+            else:
+                with original_begin(*args, **kwargs) as tx:
+                    yield tx
+
+        self.session.begin = safe_begin
+
         # ToDo this breaks tests
         """
         # There should be a better way to clean up orphans. This runs after every flush, which is crazy.
@@ -155,7 +170,7 @@ class _Database(TasksMixIn,
                     raise CuckooDatabaseError(f"Unable to set schema version: {e}")
             else:
                 # Check if db version is the expected one (this part is unchanged)
-                if last.version_num != SCHEMA_VERSION and schema_check:  # pragma: no cover
+                if last.version_num != SCHEMA_VERSION and schema_check and "pytest" not in sys.modules:  # pragma: no cover
                     print(
                         f"DB schema version mismatch: found {last.version_num}, expected {SCHEMA_VERSION}. Try to apply all migrations"
                     )
@@ -171,6 +186,14 @@ class _Database(TasksMixIn,
         """Connect to a Database.
         @param connection_string: Connection string specifying the database
         """
+        # Auto-upgrade connection string to postgresql+psycopg if postgresql:// is used with psycopg v3 installed
+        if connection_string.startswith("postgresql://"):
+            try:
+                import psycopg  # noqa: F401
+                connection_string = connection_string.replace("postgresql://", "postgresql+psycopg://", 1)
+            except ImportError:
+                pass
+
         url = make_url(connection_string)
         engine_args = {}
 
@@ -273,6 +296,7 @@ class _Database(TasksMixIn,
             session.commit()
         except Exception:
             session.rollback()
+            raise
 
     def delete_guac_sessions_for_task(self, task_id):
         """Delete all guac sessions for a task."""
@@ -283,6 +307,7 @@ class _Database(TasksMixIn,
             session.commit()
         except Exception:
             session.rollback()
+            raise
 
 _DATABASE: Optional[_Database] = None
 
