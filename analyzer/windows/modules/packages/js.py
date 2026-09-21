@@ -25,7 +25,10 @@ class JS(Package):
         wscript = self.get_path("wscript.exe")
         ext = os.path.splitext(path)[-1].lower()
         if ext not in (".js", ".jse"):
-            if ext == ".jse" or os.path.isfile(path) and open(path, "rt").read(4) == "#@~^":
+            # Magic must be read as bytes. In text mode this decodes with the guest's
+            # default codec (cp1252), so any byte undefined there -- routine in
+            # obfuscated script -- raises UnicodeDecodeError and the sample never runs.
+            if ext == ".jse" or os.path.isfile(path) and open(path, "rb").read(4) == b"#@~^":
                 if ext != ".jse":
                     os.rename(path, f"{path}.jse")
                     path = f"{path}.jse"

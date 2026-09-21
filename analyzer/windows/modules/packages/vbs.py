@@ -29,9 +29,12 @@ class VBS(Package):
         # and rename it. This is needed for wscript to execute correctly.
         ext = os.path.splitext(path)[-1].lower()
         if ext not in (".vbs", ".vbe"):
-            with open(path, "r") as tmpfile:
+            # Magic must be read as bytes. In text mode this decodes with the guest's
+            # default codec (cp1252), so any byte undefined there -- routine in
+            # obfuscated script -- raises UnicodeDecodeError and the sample never runs.
+            with open(path, "rb") as tmpfile:
                 magic_bytes = tmpfile.read(4)
-            if magic_bytes == "#@~^":
+            if magic_bytes == b"#@~^":
                 os.rename(path, f"{path}.vbe")
                 path = f"{path}.vbe"
             else:
