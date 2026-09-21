@@ -762,8 +762,22 @@ class Process:
             log.error("Failed to create terminate-reply event for process %d", self.pid)
             return
 
-        KERNEL32.WaitForSingleObject(self.terminate_event_handle, 5000)
-        log.info("Termination confirmed for process %d", self.pid)
+        # capemon does its .NET image enumeration (DumpInterestingRegions) after this
+        # event, and signals back when it is done. 5000 was well under what that takes:
+        # a single image sequence has been measured at 12.4s, so the payload -- always the
+        # last image loaded -- was routinely cut off and never uploaded. This is a timeout,
+        # not a sleep: a process that replies costs the same 10-300ms it always did.
+        try:
+            grace = int(self.options.get("terminate_grace", 30000))
+        except (ValueError, TypeError):
+            grace = 30000
+        rc = KERNEL32.WaitForSingleObject(self.terminate_event_handle, grace)
+        # WAIT_TIMEOUT (0x102) means capemon never confirmed and whatever it was dumping is
+        # lost. Logging both the same way is why this went unnoticed for so long.
+        if rc == 0x102:
+            log.warning("Termination NOT confirmed for process %d: capemon did not reply within %dms", self.pid, grace)
+        else:
+            log.info("Termination confirmed for process %d", self.pid)
         KERNEL32.CloseHandle(self.terminate_event_handle)
 
         try:
