@@ -113,10 +113,128 @@ state = {
 class MiniHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
     server_version = "CAPE Agent"
 
+    # Bodies at or above this are streamed off the socket and spooled to disk
+    # instead of being parsed in memory. The in-memory path builds several full
+    # copies of the upload, which a 32-bit guest interpreter cannot survive: a
+    # 139MB sample reproducibly killed the handler, and because the parse happens
+    # in do_POST before dispatch the exception reaches socketserver, which closes
+    # the connection with no response. The host then reports only "CAPE Agent
+    # failed without error status" and the task completes with zero processes.
+    STREAM_THRESHOLD = 32 * 1024 * 1024
+    STREAM_SPOOL_MAX = 16 * 1024 * 1024
+    STREAM_CHUNK = 1024 * 1024
+
+    def _parse_multipart_stream(self, content_length, boundary):
+        """Stream a multipart body, spooling file parts to disk.
+
+        Only a delimiter-sized tail is held beyond the current chunk, so peak
+        memory is independent of the upload size.
+        """
+        delim = b"--" + boundary
+        form, files = {}, {}
+        remaining = content_length
+        buf = b""
+        state = {"headers": None, "sink": None, "is_file": False}
+
+        def finish():
+            hdrs = state["headers"]
+            if hdrs is None:
+                return
+            name = hdrs.get("name")
+            if name:
+                if state["is_file"]:
+                    state["sink"].seek(0)
+                    files[name] = state["sink"]
+                else:
+                    form[name] = state["sink"].getvalue().decode("utf-8", errors="replace")
+            state["headers"] = state["sink"] = None
+            state["is_file"] = False
+
+        def part_headers(raw):
+            hdrs = {}
+            for line in raw.split(b"\r\n"):
+                if b":" not in line:
+                    continue
+                k, v = line.split(b":", 1)
+                k = k.strip().lower().decode("latin-1")
+                v = v.strip().decode("latin-1")
+                if k == "content-disposition":
+                    for piece in v.split(";"):
+                        piece = piece.strip()
+                        if piece.startswith("name="):
+                            hdrs["name"] = piece[5:].strip('"')
+                        elif piece.startswith("filename="):
+                            hdrs["filename"] = piece[9:].strip('"')
+                hdrs[k] = v
+            return hdrs
+
+        seeking_headers = True
+        while True:
+            if remaining > 0:
+                chunk = self.rfile.read(min(self.STREAM_CHUNK, remaining))
+                if not chunk:
+                    remaining = 0
+                else:
+                    remaining -= len(chunk)
+                    buf += chunk
+            elif not buf:
+                break
+
+            while True:
+                if seeking_headers:
+                    idx = buf.find(delim)
+                    if idx == -1:
+                        break
+                    after = idx + len(delim)
+                    if buf[after:after + 2] == b"--":
+                        buf = b""
+                        remaining = 0
+                        break
+                    hdr_end = buf.find(b"\r\n\r\n", after)
+                    if hdr_end == -1:
+                        break
+                    hdrs = part_headers(buf[after:hdr_end])
+                    state["headers"] = hdrs
+                    state["is_file"] = "filename" in hdrs
+                    state["sink"] = (
+                        tempfile.SpooledTemporaryFile(max_size=self.STREAM_SPOOL_MAX)
+                        if state["is_file"] else BytesIO()
+                    )
+                    buf = buf[hdr_end + 4:]
+                    seeking_headers = False
+                else:
+                    idx = buf.find(b"\r\n" + delim)
+                    if idx == -1:
+                        keep = len(delim) + 4
+                        if len(buf) > keep:
+                            state["sink"].write(buf[:-keep])
+                            buf = buf[-keep:]
+                        break
+                    state["sink"].write(buf[:idx])
+                    finish()
+                    buf = buf[idx + 2:]
+                    seeking_headers = True
+
+            if remaining <= 0 and (seeking_headers or not buf):
+                break
+
+        finish()
+        return form, files
+
     def _parse_form_and_files(self):
         content_length = int(self.headers.get("Content-Length", "0") or 0)
         content_type = self.headers.get("Content-Type", "")
         media_type = content_type.split(";", 1)[0].strip().lower()
+
+        if media_type == "multipart/form-data" and content_length >= self.STREAM_THRESHOLD:
+            boundary = None
+            for piece in content_type.split(";"):
+                piece = piece.strip()
+                if piece.startswith("boundary="):
+                    boundary = piece[9:].strip('"').encode("utf-8")
+            if boundary:
+                return self._parse_multipart_stream(content_length, boundary)
+
         body = self.rfile.read(content_length) if content_length > 0 else b""
 
         form = {}
