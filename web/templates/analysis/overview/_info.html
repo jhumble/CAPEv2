@@ -50,6 +50,7 @@
                         <th>Completed</th>
                         <th>Duration</th>
                         {% if settings.WEB_AUTHENTICATION and config.display_submitter and analysis.info.submitter_username %}<th>Submitter</th>{% endif %}
+                        {% if analysis.info.custom %}<th>Submitted by</th>{% endif %}
                         {% if analysis.info.tags_tasks %}<th>Task Tags</th>{% endif %}
                         {% if analysis.info.options %}<th>Options</th>{% endif %}
                         {% if user.is_staff and analysis.distributed %}<th>Distributed</th>{% endif %}
@@ -69,6 +70,7 @@
                         {% if settings.WEB_AUTHENTICATION and config.display_submitter and analysis.info.submitter_username %}
                             <td><span class="badge bg-secondary"><i class="fas fa-user me-1"></i>{{analysis.info.submitter_username}}</span></td>
                         {% endif %}
+                        {% if analysis.info.custom %}<td><span class="badge bg-info text-dark"><i class="fas fa-user-tag me-1"></i>{{ analysis.info.custom|cut:"submitted_by:" }}</span></td>{% endif %}
                         {% if analysis.info.tags_tasks %}
                             <td>{% for t in analysis.info.tags_tasks|split_csv %}<span class="badge bg-danger me-1">{{t}}</span>{% endfor %}</td>
                         {% endif %}

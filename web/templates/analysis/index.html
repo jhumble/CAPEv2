@@ -83,6 +83,7 @@
                             {% if settings.WEB_AUTHENTICATION and config.display_submitter %}
                             <th width="7%" class="border-top-0">Submitter</th>
                             {% endif %}
+                            <th width="7%" class="border-top-0">Submitted by</th>
 
                             {% if config.moloch %}
                             <th width="4%" class="border-top-0">Moloch</th>
@@ -201,6 +202,13 @@
                                 {% endif %}
                             </td>
                             {% endif %}
+                            <td>
+                                {% if analysis.custom %}
+                                <span class="badge bg-info text-dark"><i class="fas fa-user-tag me-1"></i>{{ analysis.custom|cut:"submitted_by:" }}</span>
+                                {% else %}
+                                <span class="text-white-50">-</span>
+                                {% endif %}
+                            </td>
 
                             {% if config.moloch %}
                             <td>
@@ -396,6 +404,7 @@
                             {% if settings.WEB_AUTHENTICATION and config.display_submitter %}
                             <th width="7%" class="border-top-0">Submitter</th>
                             {% endif %}
+                            <th width="7%" class="border-top-0">Submitted by</th>
                             {% if config.moloch %}
                             <th width="4%" class="border-top-0">Moloch</th>
                             {% endif %}
@@ -490,6 +499,13 @@
                                 {% endif %}
                             </td>
                             {% endif %}
+                            <td>
+                                {% if analysis.custom %}
+                                <span class="badge bg-info text-dark"><i class="fas fa-user-tag me-1"></i>{{ analysis.custom|cut:"submitted_by:" }}</span>
+                                {% else %}
+                                <span class="text-white-50">-</span>
+                                {% endif %}
+                            </td>
 
                             {% if config.moloch %}
                             <td>
