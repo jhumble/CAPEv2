@@ -204,6 +204,28 @@ def main() -> Optional[bool]:
         parser.error(e)
         return False
 
+    # Infer platform from the package when the caller pinned neither.
+    #
+    # An empty platform matches EVERY machine, so on a mixed pool a Windows-only
+    # package can be scheduled onto the Linux guest, where it dies with
+    # 'Unable to import package "msi": it does not exist' -- a confusing failure
+    # that costs a guest cycle and looks like a broken sample. The web/API path
+    # sets platform; utils/submit.py did not.
+    #
+    # Only decided when the package name exists under exactly one analyzer tree.
+    # Names present in both (js, zip, pdf, doc, generic, python, jar, ...) are
+    # genuinely ambiguous and are left alone.
+    if not args.platform and not args.machine and args.package:
+        import os.path as _op
+        _root = _op.join(_op.dirname(_op.dirname(_op.abspath(__file__))), "analyzer")
+        _has = {
+            _p: _op.isfile(_op.join(_root, _p, "modules", "packages", "%s.py" % args.package))
+            for _p in ("windows", "linux")
+        }
+        _only = [_p for _p, _ok in _has.items() if _ok]
+        if len(_only) == 1:
+            args.platform = _only[0]
+
     # If the quiet flag has been set, then we also disable the "warning"
     # level of the logging module. (E.g., when pydeep has not been installed,
     # there will be a warning message, because Cuckoo can't resolve the
