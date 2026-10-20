@@ -1,7 +1,6 @@
 import logging
 import os
 import subprocess
-import time
 import zipfile
 from threading import Thread
 
@@ -293,17 +292,11 @@ class Evtx(Thread, Auxiliary):
         self.enable_cmdline_logging()
         self.configure_log_sizes()
         self.enable_advanced_logging()
-        self.wipe_windows_logs()
 
-        # Periodic snapshot loop — captures events even if malware wipes logs
-        while self.do_run:
-            for _ in range(self.SNAPSHOT_INTERVAL):
-                if not self.do_run:
-                    break
-                time.sleep(1)
-            if self.do_run:
-                self.take_snapshot()
-
+        # Deliberately no wipe and no snapshot loop. Clearing the channels
+        # makes every analysis look like T1070.001 to the EDR, which is the
+        # telemetry this lab exists to keep clean. wipe_windows_logs() and
+        # take_snapshot() are retained but unused.
         return True
 
     def stop(self):
@@ -311,45 +304,9 @@ class Evtx(Thread, Auxiliary):
         if not self.enabled:
             return True
 
-        # Take final snapshot of remaining events
-        self.take_snapshot()
-
-        # Merge all snapshots into a single evtx.zip.
-        # Each snapshot is incremental (logs wiped after each), so we
-        # include ALL snapshots. Since evtx files can't be concatenated,
-        # we add each snapshot's evtx with a unique name (channel_N.evtx).
-        snapshot_base = os.path.join(
-            os.environ.get("TEMP", "C:\\Windows\\Temp"),
-            "evtx_snapshots",
-        )
-
-        with zipfile.ZipFile(self.evtx_dump, "w", zipfile.ZIP_DEFLATED) as zip_obj:
-            if os.path.isdir(snapshot_base):
-                for snap_name in sorted(os.listdir(snapshot_base), key=lambda x: int(x) if x.isdigit() else x):
-                    snap_dir = os.path.join(snapshot_base, snap_name)
-                    if not os.path.isdir(snap_dir):
-                        continue
-                    for evtx_file in os.listdir(snap_dir):
-                        if not evtx_file.lower().endswith(".evtx"):
-                            continue
-                        full_path = os.path.join(snap_dir, evtx_file)
-                        if os.path.getsize(full_path) == 0:
-                            continue
-                        # Add with snapshot number prefix to avoid name collisions
-                        arc_name = f"{snap_name}_{evtx_file}"
-                        try:
-                            zip_obj.write(full_path, arc_name)
-                        except Exception:
-                            pass
-
+        # Single cumulative export; without wiping, the last read has everything.
+        self.export_windows_logs(self.evtx_dump)
         if os.path.exists(self.evtx_dump):
             upload_to_host(self.evtx_dump, f"evtx/{self.evtx_dump}")
-
-        # Clean up
-        try:
-            import shutil
-            shutil.rmtree(snapshot_base, ignore_errors=True)
-        except Exception:
-            pass
 
         return True
