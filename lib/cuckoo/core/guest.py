@@ -31,7 +31,48 @@ db = Database()
 cfg = Config()
 
 
-def analyzer_zipfile(platform):
+def analyzer_exclusions(machine_name):
+    """Per-machine analyzer files to leave out of the upload.
+
+    A guest whose EDR policy is in prevention quarantines bin/PPLinject*.exe the
+    moment the analyzer lands -- the file is written on every analysis, before any
+    submission option is read, so no package option can avoid it. Once it is gone
+    the analyzer dies with FileNotFoundError and the task reports nothing.
+
+    Measured 2026-09-23 on a prevention-policy guest: PPLinject64.exe was
+    quarantined within a minute while bin/loader_x64.exe, which is how capemon is
+    actually injected, was left alone. So dropping only the file the ML engine
+    objects to keeps that guest usable, and is far narrower than an AV exclusion
+    on the analyzer directory -- which, because the analyzer unpacks to a randomly
+    named folder at the drive root, would have to be a wildcard that weakens every
+    host sharing the policy.
+
+    The cost is injection into Protected Process Light targets (lsass), which the
+    prevention guest does not need: its deliverable is sensor telemetry, not
+    CAPE's own trace.
+
+    Configured per machine, so the normal guests keep full capability:
+
+        [prevention-guest]
+        exclude_analyzer_files = PPLinject.exe,PPLinject64.exe
+    """
+    if not machine_name:
+        return ()
+    try:
+        machinery = Config("cuckoo").cuckoo.machinery
+        section = getattr(Config(machinery), machine_name, None)
+        raw = getattr(section, "exclude_analyzer_files", None) if section else None
+    except Exception:
+        log.exception("could not read analyzer exclusions for %s", machine_name)
+        return ()
+    # Config's Dictionary returns None for a missing key rather than raising, so
+    # the getattr default never applies -- str(None) would yield a bogus "none".
+    if not raw:
+        return ()
+    return tuple(x.strip().lower() for x in str(raw).split(",") if x.strip())
+
+
+def analyzer_zipfile(platform, exclude=()):
     """Create the zip file that is sent to the Guest."""
     t = timeit.default_timer()
 
@@ -52,6 +93,9 @@ def analyzer_zipfile(platform):
     for root, dirs, files in os.walk(root):
         archive_root = os.path.abspath(root)[root_len:]
         for name in files:
+            if name.lower() in exclude:
+                log.debug("analyzer zip: omitting %s", name)
+                continue
             path = os.path.join(root, name)
             archive_name = os.path.join(archive_root, name)
             zip_file.write(path, archive_name)
@@ -201,7 +245,11 @@ class GuestManager:
 
     def upload_analyzer(self):
         """Upload the analyzer to the Virtual Machine."""
-        zip_data = analyzer_zipfile(self.platform)
+        exclude = analyzer_exclusions(self.vmid)
+        if exclude:
+            log.info("Task #%s: analyzer upload excludes %s for %s",
+                     self.task_id, ",".join(exclude), self.vmid)
+        zip_data = analyzer_zipfile(self.platform, exclude)
 
         log.debug(
             "Task #%s: Uploading analyzer to guest (id=%s, ip=%s, size=%d)", self.task_id, self.vmid, self.ipaddr, len(zip_data)
