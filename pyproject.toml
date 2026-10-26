@@ -90,6 +90,7 @@ dependencies = [
     "CAPE-parsers>=0.1.36",
     "maco==1.1.8",
     "proxmoxer (>=2.3.0,<3.0.0)",
+    "evtx (>=0.14.0,<0.15.0)",
 ]
 
 [project.optional-dependencies]

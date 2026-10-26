@@ -779,7 +779,7 @@ description = "CBOR (de)serializer with extensive tag support"
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
-markers = "platform_python_implementation == \"PyPy\" and python_version >= \"3.11\" and sys_platform == \"win32\""
+markers = "platform_python_implementation == \"PyPy\" and sys_platform == \"win32\" and python_version >= \"3.11\""
 files = [
     {file = "cbor2-5.9.0-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:55bea0dd9a7d354e35f4e5fe58ceab393e76962713749dc3a0a64a0e5d19545e"},
     {file = "cbor2-5.9.0-cp310-cp310-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:3095dc49e75572841a9534cbfdabc2a17487ea4ee33341436abc4a7ac7245a3a"},
@@ -906,7 +906,7 @@ description = "Foreign Function Interface for Python calling C code."
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
-markers = "platform_python_implementation != \"PyPy\" or python_version >= \"3.11\""
+markers = "python_version >= \"3.11\" or platform_python_implementation != \"PyPy\""
 files = [
     {file = "cffi-2.1.1-cp310-cp310-macosx_10_15_x86_64.whl", hash = "sha256:baed1e86cc735622097354b9d1281406caf42ff42a886d29faa8e8d1630333be"},
     {file = "cffi-2.1.1-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:ca82be1a1d406ecfe1d25dc16cb33488e5a16bf4438c9fb590484ea29d92478b"},
@@ -1975,17 +1975,45 @@ dnspython = ">=2.0.0"
 idna = ">=2.0.0"
 
 [[package]]
+name = "evtx"
+version = "0.14.0"
+description = ""
+optional = false
+python-versions = ">=3.10"
+groups = ["main"]
+files = [
+    {file = "evtx-0.14.0-cp310-abi3-macosx_10_12_x86_64.macosx_11_0_arm64.macosx_10_12_universal2.whl", hash = "sha256:5c54428a8f25a64038c655ab645bafd23d5c1674c262ed2354634201efc9f8e1"},
+    {file = "evtx-0.14.0-cp310-abi3-macosx_11_0_arm64.whl", hash = "sha256:5c80f70fc17b8d335bfc0a5111aaa9c58747ddbc9b65392604f08f2e650dc7b2"},
+    {file = "evtx-0.14.0-cp310-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:2409e8cfe05a37574f2e25660ba93d1bfc379a2fce058933162bdae19bbf0753"},
+    {file = "evtx-0.14.0-cp310-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:13292dafc247ec682d197787ae07cfebcf66843d2769c87912faa9f5219fa5a7"},
+    {file = "evtx-0.14.0-cp310-abi3-musllinux_1_2_aarch64.whl", hash = "sha256:6b14669390b68d57198701bf32857dfa4b5942853ad07bfec9590a02442473f3"},
+    {file = "evtx-0.14.0-cp310-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:ab627be9298f879cc074aac633ab00fdba38ba7f1f99467ff82001a20b5e140c"},
+    {file = "evtx-0.14.0-cp310-abi3-win_amd64.whl", hash = "sha256:dd92d15c0d1707d21ae1502620091b0c73052fee932cebf013e53fb3da63fdc7"},
+    {file = "evtx-0.14.0-cp314-cp314t-macosx_10_12_x86_64.macosx_11_0_arm64.macosx_10_12_universal2.whl", hash = "sha256:97d2d1b69e3d42c95bc37915a20f951d5743f7cf8e44f1868debf70185ba268b"},
+    {file = "evtx-0.14.0-cp314-cp314t-macosx_11_0_arm64.whl", hash = "sha256:f05d57c1400a77f50b0b102f05aee14ae0ff0c03f7811a9eb74362fdb37791d5"},
+    {file = "evtx-0.14.0-cp314-cp314t-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:296a66fdfb69b9dd4ba6f39154097664af9f9eaeb6e861fd7ef6d62b1807aeff"},
+    {file = "evtx-0.14.0-cp314-cp314t-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:37498d0bf1762ba7b1e7d3576ac0f898a429ca5b36eb99666d5d7c34d2597d05"},
+    {file = "evtx-0.14.0-cp314-cp314t-musllinux_1_2_aarch64.whl", hash = "sha256:3c9b7a8be4b669fd1cd7183f333a5303d2d3cb232473457905b3d417de22e21a"},
+    {file = "evtx-0.14.0-cp314-cp314t-musllinux_1_2_x86_64.whl", hash = "sha256:26c656a4fafb00a737f43157196259cbe52b764ecec4ef2b0f1be9909e9fa1cf"},
+    {file = "evtx-0.14.0-cp314-cp314t-win_amd64.whl", hash = "sha256:d4a940dd6319193e8f488fdb5c1e797c37189ae1efc942a755426b81bb52f249"},
+]
+
+[package.extras]
+dev = ["jupyter", "maturin (>=1.15,<2.0)"]
+test = ["pytest"]
+
+[[package]]
 name = "exceptiongroup"
 version = "1.3.1"
 description = "Backport of PEP 654 (exception groups)"
-optional = false
+optional = true
 python-versions = ">=3.7"
 groups = ["main", "dev"]
 files = [
     {file = "exceptiongroup-1.3.1-py3-none-any.whl", hash = "sha256:a7a39a3bd276781e98394987d3a5701d0c4edffb633bb7a5144577f82c773598"},
     {file = "exceptiongroup-1.3.1.tar.gz", hash = "sha256:8b412432c6055b0b7d14c310000ae93352ed6754f70fa8f7c34141f91c4e3219"},
 ]
-markers = {main = "python_version == \"3.10\" or extra == \"mcp\"", dev = "python_version == \"3.10\""}
+markers = {main = "extra == \"mcp\" or python_version == \"3.10\"", dev = "python_version == \"3.10\""}
 
 [package.dependencies]
 typing-extensions = {version = ">=4.6.0", markers = "python_version < \"3.13\""}
@@ -2295,7 +2323,7 @@ files = [
 google-auth = ">=2.14.1,<3.0.0"
 googleapis-common-protos = ">=1.63.2,<2.0.0"
 grpcio = [
-    {version = ">=1.33.2,<2.0.0", optional = true, markers = "extra == \"grpc\""},
+    {version = ">=1.33.2,<2.0.0", optional = true, markers = "python_version < \"3.11\" and extra == \"grpc\""},
     {version = ">=1.49.1,<2.0.0", optional = true, markers = "python_version >= \"3.11\" and extra == \"grpc\""},
     {version = ">=1.75.1,<2.0.0", optional = true, markers = "python_version >= \"3.14\" and extra == \"grpc\""},
 ]
@@ -2386,7 +2414,7 @@ google-api-core = {version = ">=2.28.0,<3.0.0", extras = ["grpc"]}
 google-auth = ">=2.14.1,<2.24.0 || >2.24.0,<2.25.0 || >2.25.0,<3.0.0"
 grpc-google-iam-v1 = ">=0.14.2,<1.0.0"
 grpcio = [
-    {version = ">=1.59.0,<2.0.0"},
+    {version = ">=1.59.0,<2.0.0", markers = "python_version < \"3.14\""},
     {version = ">=1.75.1,<2.0.0", markers = "python_version >= \"3.14\""},
 ]
 grpcio-status = [
@@ -2923,7 +2951,7 @@ description = "httpx2 transports for Emscripten/Pyodide, backed by the JavaScrip
 optional = true
 python-versions = ">=3.12"
 groups = ["main"]
-markers = "python_version >= \"3.12\" and sys_platform == \"emscripten\" and extra == \"mcp\""
+markers = "sys_platform == \"emscripten\" and extra == \"mcp\" and python_version >= \"3.12\""
 files = [
     {file = "httpx2_jsfetch-1.0-py3-none-any.whl", hash = "sha256:cb916b707601e69a07721aabc8f3f6659be3a6893bc1ff5c6f9e02241df2da32"},
     {file = "httpx2_jsfetch-1.0.tar.gz", hash = "sha256:70a0e3eabfef7cce5ad9c629f7d01ca05e418f586646f4ddf14782e4c1454c60"},
@@ -7600,7 +7628,7 @@ description = "A portable, lightweight MessagePack serializer and deserializer w
 optional = false
 python-versions = "*"
 groups = ["main"]
-markers = "platform_python_implementation != \"CPython\" and python_version >= \"3.11\""
+markers = "python_version >= \"3.11\" and platform_python_implementation != \"CPython\""
 files = [
     {file = "u-msgpack-python-2.8.0.tar.gz", hash = "sha256:b801a83d6ed75e6df41e44518b4f2a9c221dc2da4bcd5380e3a0feda520bc61a"},
     {file = "u_msgpack_python-2.8.0-py2.py3-none-any.whl", hash = "sha256:1d853d33e78b72c4228a2025b4db28cda81214076e5b0422ed0ae1b1b2bb586a"},
@@ -7834,7 +7862,7 @@ description = "Fast implementation of asyncio event loop on top of libuv"
 optional = false
 python-versions = ">=3.8.1"
 groups = ["main"]
-markers = "platform_python_implementation != \"PyPy\" and sys_platform != \"win32\" and sys_platform != \"cygwin\""
+markers = "sys_platform != \"win32\" and sys_platform != \"cygwin\" and platform_python_implementation != \"PyPy\""
 files = [
     {file = "uvloop-0.22.1-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:ef6f0d4cc8a9fa1f6a910230cd53545d9a14479311e87e3cb225495952eb672c"},
     {file = "uvloop-0.22.1-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:7cd375a12b71d33d46af85a3343b35d98e8116134ba404bd657b3b1d15988792"},
@@ -8321,7 +8349,7 @@ description = "Enable Unicode input and display when running Python from Windows
 optional = false
 python-versions = "*"
 groups = ["main"]
-markers = "platform_python_implementation != \"PyPy\" and platform_system == \"Windows\""
+markers = "platform_system == \"Windows\" and platform_python_implementation != \"PyPy\""
 files = [
     {file = "win_unicode_console-0.5.zip", hash = "sha256:d4142d4d56d46f449d6f00536a73625a871cba040f0bc1a2e305a04578f07d1e"},
 ]
@@ -8535,4 +8563,4 @@ yara = ["plyara"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10, <4.0"
-content-hash = "17acdad9fc222944fa0a0dec979c7bdc75af6ff68311306749b8428c0f64cb7b"
+content-hash = "ca11450c4a414b6890f55e06480b369616b50a38a7035c303314fb7669a184a8"
